@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nutrition AI Pro | Fitness Recipe CMS</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="nav-content">
+        <div class="logo">Nutrition AI <span class="text-primary">Pro</span></div>
+        <div class="nav-links">
+          <button class="nav-btn active" data-target="view-generator">Generator</button>
+          <button class="nav-btn" data-target="view-library">Library</button>
+          <button class="nav-btn" data-target="view-settings">Settings</button>
+          <button id="logout-btn" class="nav-btn" style="color: #ef4444; border-bottom-color: transparent;">Logout</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      <!-- VIEW: Generator -->
+      <!-- VIEW: Generator -->
+      <div id="view-generator" class="view active">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; align-items: start;">
+          <!-- Left: Generator Form -->
+          <div class="glass-panel" id="form-container">
+            <h2 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+              <span style="font-size: 1.5rem;">🍳</span> AI Production Lab
+            </h2>
+            <form id="recipe-form">
+              <div class="form-group" id="content-type-selector-group">
+                <label>Content Type</label>
+                <div id="content-type-pills">
+                  <button type="button" class="content-type-pill active" data-content-type="recipe_card">
+                    <span class="pill-icon">🍽️</span>
+                    <span class="pill-name">Recipe Card</span>
+                    <span class="pill-desc">Standard fitness recipe</span>
+                  </button>
+                  <button type="button" class="content-type-pill" data-content-type="blog_post">
+                    <span class="pill-icon">📝</span>
+                    <span class="pill-name">Blog Post</span>
+                    <span class="pill-desc">Full article with story</span>
+                  </button>
+                  <button type="button" class="content-type-pill" data-content-type="meal_prep_guide">
+                    <span class="pill-icon">📦</span>
+                    <span class="pill-name">Meal Prep Guide</span>
+                    <span class="pill-desc">Weekly prep plan</span>
+                  </button>
+                  <button type="button" class="content-type-pill" data-content-type="social_hit">
+                    <span class="pill-icon">📱</span>
+                    <span class="pill-name">Social Hit</span>
+                    <span class="pill-desc">Instagram / TikTok ready</span>
+                  </button>
+                  <button type="button" class="content-type-pill" data-content-type="email_newsletter">
+                    <span class="pill-icon">✉️</span>
+                    <span class="pill-name">Email Newsletter</span>
+                    <span class="pill-desc">Subscriber-focused</span>
+                  </button>
+                </div>
+              </div>
+              <input type="hidden" id="selected-content-type" value="recipe_card">
+              <div class="editor-row">
+                <div class="form-group">
+                  <label>Fitness Goal</label>
+                  <select id="goal-select">
+                    <option value="high_protein">High Protein</option>
+                    <option value="low_carb">Low Carb</option>
+                    <option value="low_fat">Low Fat</option>
+                    <option value="muscle_gain">Muscle Gain</option>
+                    <option value="weight_loss">Weight Loss</option>
+                    <option value="balanced_macros">Balanced Macros</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Meal Type</label>
+                  <select id="meal-type">
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="snack">Snack</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Additional Details</label>
+                <textarea id="extra-details" rows="3" placeholder="e.g. Include chicken and sweet potato..."></textarea>
+              </div>
+
+              <div class="editor-row" style="align-items: center;">
+                <div class="form-group">
+                  <label>Batch Amount</label>
+                  <input type="number" id="batch-amount" value="1" min="1" max="100" />
+                </div>
+                <button type="submit" class="primary-btn" style="margin-top: 1rem; width: 100%; padding: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                  <span>⚡</span> Commence AI Run
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Right: AI Terminal + Queue Panel -->
+          <div id="terminal-panel" class="glass-panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <!-- Header row -->
+            <div style="display:flex; align-items:center; justify-content:space-between; padding: 1.25rem 1.5rem 0; font-family: monospace; color: #00ffcc;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; font-size:1.1rem; font-weight:700;">
+                <span>>_</span> AI_TERMINAL.EXE
+              </div>
+              <div style="display:flex;align-items:center;gap:0.6rem;">
+                <button id="cancel-job-btn" style="display:none;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.5);color:#ef4444;font-family:monospace;font-size:0.7rem;padding:4px 12px;border-radius:50px;cursor:pointer;letter-spacing:0.05em;" title="Cancel all queued and active jobs">&#9632; STOP ALL</button>
+                <div id="terminal-status" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.1); color: #666;">
+                  <span style="width: 8px; height: 8px; background: #666; border-radius: 50%;"></span>
+                  IDLE
+                </div>
+              </div>
+            </div>
+
+            <!-- Body: terminal 2/3, queue 1/3 -->
+            <div style="display:flex; flex-direction:column; padding: 1rem 1.5rem 1.5rem; gap: 1rem; flex:1; min-height:0; overflow:hidden;">
+
+              <!-- Terminal log — 2/3 -->
+              <div id="ai-terminal" style="flex:2; min-height:0; background: #000; color: #00ffcc; font-family: 'Fira Code', 'Courier New', monospace; padding: 1.25rem; border-radius: var(--radius-md); font-size: 0.82rem; overflow-y: auto; border: 1px solid #00ffcc33; box-shadow: inset 0 0 20px rgba(0,255,204,0.1); display:flex; flex-direction:column;">
+                <div id="terminal-spacer" style="flex:1; min-height:0;"></div>
+                <div style="color: #666;">[SYSTEM] Terminal initialized... awaiting production run.</div>
+              </div>
+
+              <!-- Queue panel — 1/3 -->
+              <div style="flex:1; min-height:0; background:#000; border:1px solid rgba(0,255,204,0.2); border-radius:var(--radius-md); display:flex; flex-direction:column; overflow:hidden;">
+                <!-- Queue header -->
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:0.55rem 0.9rem; border-bottom:1px solid rgba(0,255,204,0.12); background:rgba(0,255,204,0.04); flex-shrink:0;">
+                  <span style="font-family:monospace; font-size:0.72rem; color:#00ffcc; letter-spacing:0.08em; font-weight:700;">&#9632; JOB QUEUE</span>
+                  <span id="queue-count-badge" style="font-family:monospace; font-size:0.65rem; background:rgba(0,255,204,0.1); color:#00ffcc; border:1px solid rgba(0,255,204,0.25); border-radius:50px; padding:1px 8px;">0 jobs</span>
+                </div>
+                <!-- Queue items -->
+                <div id="job-queue-list" style="flex:1; min-height:0; overflow-y:auto; padding:0.3rem 0.5rem;">
+                  <div id="queue-empty-state" style="display:flex; align-items:center; justify-content:center; padding:1rem; color:#333; font-family:monospace; font-size:0.7rem; gap:0.5rem;">
+                    <span>&#9711;</span><span>Queue empty</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Drafts Inbox Table -->
+        <div class="glass-panel" style="padding: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+              <span>📥</span> Drafts Inbox (Review Queue)
+            </h2>
+            <div id="draft-bulk-toolbar" style="display: none; gap: 1rem; align-items: center;">
+              <span id="draft-selection-count" style="font-size: 0.8rem; color: var(--primary-color); font-weight: bold;">0 Selected</span>
+              <button id="bulk-finalize-btn" class="primary-btn" style="padding: 4px 12px; font-size: 0.8rem; background: #10b981;">Finalize Selected</button>
+              <button id="bulk-draft-delete-btn" class="danger-btn" style="padding: 4px 12px; font-size: 0.8rem;">Delete Selected</button>
+            </div>
+          </div>
+
+          <div class="cms-table-container glass-panel" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.2);">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead style="background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--glass-border);">
+                <tr>
+                  <th style="padding: 1rem; width: 40px;"><input type="checkbox" id="select-all-drafts"></th>
+                  <th style="padding: 1rem;">Title</th>
+                  <th style="padding: 1rem; width: 110px;">Type</th>
+                  <th style="padding: 1rem; width: 110px;">Meal Type</th>
+                  <th style="padding: 1rem; width: 250px;">Nutrition</th>
+                  <th style="padding: 1rem; text-align: right; width: 220px; white-space: nowrap;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="draft-table-body">
+                <!-- Drafts injected here -->
+                <tr>
+                  <td colspan="6" style="padding: 2rem; text-align: center; color: var(--text-muted);">No drafts currently in production.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: Library -->
+      <div id="view-library" class="view">
+        <div class="view-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h1>Recipe Vault</h1>
+            <p class="text-secondary">Your collection of finalized, high-quality fitness recipes.</p>
+          </div>
+        </div>
+
+        <!-- CMS Data Grid -->
+        <section class="library-section cms-grid-section">
+          <!-- Filter Bar -->
+          <div class="cms-filter-bar glass-panel" style="display: flex; gap: 1rem; margin-bottom: 1rem; padding: 1rem;">
+            <input type="text" id="lib-search" placeholder="Search recipes...">
+            <select id="lib-filter-meal">
+              <option value="">All Meals</option>
+              <option value="breakfast">Breakfast</option>
+              <option value="lunch">Lunch</option>
+              <option value="dinner">Dinner</option>
+              <option value="snack">Snack</option>
+            </select>
+            <select id="lib-filter-goal">
+              <option value="">All Goals</option>
+              <option value="high_protein">High Protein</option>
+              <option value="muscle_gain">Muscle Gain</option>
+              <option value="weight_loss">Weight Loss</option>
+            </select>
+            <select id="lib-filter-type">
+              <option value="">All Types</option>
+              <option value="recipe_card">Recipe Card</option>
+              <option value="blog_post">Blog Post</option>
+              <option value="meal_prep_guide">Meal Prep Guide</option>
+              <option value="social_hit">Social</option>
+              <option value="email_newsletter">Email</option>
+            </select>
+            <select id="lib-sort">
+              <option value="created_desc">Newest First</option>
+              <option value="created_asc">Oldest First</option>
+              <option value="cal_desc">Calories (High-Low)</option>
+              <option value="cal_asc">Calories (Low-High)</option>
+              <option value="pro_desc">Protein (High-Low)</option>
+              <option value="pro_asc">Protein (Low-High)</option>
+              <option value="fat_desc">Fat (High-Low)</option>
+              <option value="fat_asc">Fat (Low-High)</option>
+              <option value="carb_desc">Carbs (High-Low)</option>
+              <option value="carb_asc">Carbs (Low-High)</option>
+            </select>
+          </div>
+
+          <!-- Bulk Actions Toolbar -->
+          <div id="bulk-action-toolbar" class="glass-panel" style="display: none; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; margin-bottom: 1rem; background: rgba(168, 85, 247, 0.1); border-color: var(--primary-color);">
+            <span id="bulk-selection-count" style="font-weight: bold; color: var(--primary-color);">0 Selected</span>
+            <div style="display: flex; gap: 1rem;">
+              <button id="bulk-approve-btn" class="primary-btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">Approve Selected</button>
+              <button id="bulk-delete-btn" class="danger-btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">Delete Selected</button>
+            </div>
+          </div>
+
+          <!-- Data Table -->
+          <div class="cms-table-container glass-panel" style="padding: 0; overflow: hidden;">
+            <table class="cms-data-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead style="background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--glass-border);">
+                <tr>
+                  <th style="padding: 1rem; width: 40px;"><input type="checkbox" id="select-all-checkbox"></th>
+                  <th style="padding: 1rem;">Recipe Title</th>
+                  <th style="padding: 1rem; width: 120px;">Type</th>
+                  <th style="padding: 1rem; width: 140px;">Meal Type</th>
+                  <th style="padding: 1rem; width: 180px;">Nutrition</th>
+                  <th style="padding: 1rem; width: 300px; text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="recipe-table-body">
+                <!-- Rows injected by JS -->
+              </tbody>
+            </table>
+            
+            <!-- Pagination -->
+            <div class="cms-pagination" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-top: 1px solid var(--glass-border); background: rgba(0,0,0,0.2);">
+              <span id="page-info" style="color: var(--text-muted); font-size: 0.9rem;">Showing 0 recipes</span>
+              <div style="display: flex; gap: 0.5rem;">
+                <button id="page-prev-btn" class="secondary-btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;" disabled>&laquo; Prev</button>
+                <button id="page-next-btn" class="secondary-btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;" disabled>Next &raquo;</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- VIEW: Settings -->
+      <div id="view-settings" class="view">
+        <div style="margin-bottom: 2rem;">
+          <h2 class="view-title">System Settings</h2>
+          <p class="view-subtitle">Configure AI providers, security, logging, and data management.</p>
+        </div>
+
+        <div class="settings-layout">
+          <!-- Sidebar navigation -->
+          <div class="settings-sidebar glass-panel">
+            <button type="button" class="settings-tab-btn active" data-settings-tab="settings-ai"><span>🤖</span> AI Providers</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="settings-generation"><span>⚙️</span> Generation</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="settings-account"><span>👤</span> Users</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="settings-security"><span>🔒</span> Security</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="settings-logs"><span>📋</span> Logs</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="settings-data"><span>💾</span> Data</button>
+            <button type="button" class="settings-tab-btn" data-settings-tab="settings-prompts"><span>🧠</span> AI LLM Calls</button>
+          </div>
+
+          <!-- Main content area -->
+          <div class="settings-content glass-panel">
+
+            <!-- ── TAB: AI Providers ─────────────────────────────────── -->
+            <div id="settings-ai" class="settings-section active">
+              <div class="settings-section-header">
+                <h3>AI Providers</h3>
+                <div id="active-provider-badge" class="active-badge">Active: <strong id="active-provider-label">Ollama</strong>&nbsp;/&nbsp;<span id="active-model-label" class="text-muted">llama3</span></div>
+              </div>
+
+              <div class="provider-tabs">
+                <button type="button" class="provider-tab-btn active" data-provider="ollama">🦙 Ollama</button>
+                <button type="button" class="provider-tab-btn" data-provider="claude">✳ Claude</button>
+                <button type="button" class="provider-tab-btn" data-provider="openai">◉ OpenAI</button>
+                <button type="button" class="provider-tab-btn" data-provider="gemini">◈ Gemini</button>
+              </div>
+
+              <!-- Ollama config -->
+              <div id="provider-config-ollama" class="provider-config">
+                <div class="form-group">
+                  <label>Ollama API URL</label>
+                  <input type="text" id="config-url" placeholder="http://host.docker.internal:11434/api/generate">
+                  <p class="input-help">Use http://host.docker.internal:11434/api/generate when running inside Docker.</p>
+                </div>
+                <div class="form-group">
+                  <label>Model</label>
+                  <input type="text" id="config-model" placeholder="llama3" list="ollama-model-list">
+                  <datalist id="ollama-model-list"></datalist>
+                  <p class="input-help">Click "Test Connection" to auto-populate available models from your Ollama instance.</p>
+                </div>
+              </div>
+
+              <!-- Claude config -->
+              <div id="provider-config-claude" class="provider-config" style="display:none;">
+                <div class="form-group">
+                  <label>Anthropic API Key</label>
+                  <div class="input-with-toggle">
+                    <input type="password" id="config-claude-key" placeholder="sk-ant-...">
+                    <button type="button" class="key-toggle-btn" data-target="config-claude-key">👁</button>
+                  </div>
+                  <p class="input-help">Get your key at <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" class="settings-link">console.anthropic.com</a></p>
+                </div>
+                <div class="form-group">
+                  <label>Model</label>
+                  <select id="config-claude-model">
+                    <option value="claude-opus-4-5">Claude Opus 4.5</option>
+                    <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
+                    <option value="claude-haiku-3-5">Claude Haiku 3.5</option>
+                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                    <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- OpenAI config -->
+              <div id="provider-config-openai" class="provider-config" style="display:none;">
+                <div class="form-group">
+                  <label>OpenAI API Key</label>
+                  <div class="input-with-toggle">
+                    <input type="password" id="config-openai-key" placeholder="sk-...">
+                    <button type="button" class="key-toggle-btn" data-target="config-openai-key">👁</button>
+                  </div>
+                  <p class="input-help">Get your key at <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer" class="settings-link">platform.openai.com</a></p>
+                </div>
+                <div class="form-group">
+                  <label>Model</label>
+                  <select id="config-openai-model">
+                    <option value="gpt-4o" selected>GPT-4o</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                    <option value="o1-mini">o1 Mini</option>
+                    <option value="o3-mini">o3 Mini</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Gemini config -->
+              <div id="provider-config-gemini" class="provider-config" style="display:none;">
+                <div class="form-group">
+                  <label>Google API Key</label>
+                  <div class="input-with-toggle">
+                    <input type="password" id="config-gemini-key" placeholder="AIza...">
+                    <button type="button" class="key-toggle-btn" data-target="config-gemini-key">👁</button>
+                  </div>
+                  <p class="input-help">Get your key at <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" class="settings-link">aistudio.google.com</a></p>
+                </div>
+                <div class="form-group">
+                  <label>Model</label>
+                  <select id="config-gemini-model">
+                    <option value="gemini-1.5-pro" selected>Gemini 1.5 Pro</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Exp)</option>
+                    <option value="gemini-2.5-pro-preview-06-05">Gemini 2.5 Pro</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="settings-actions">
+                <button type="button" id="save-ai-btn" class="primary-btn">Save Configuration</button>
+                <button type="button" id="test-ai-btn" class="secondary-btn">Test Connection</button>
+                <button type="button" id="set-active-provider-btn" class="secondary-btn" style="border-color:#10b981;color:#10b981;">✓ Set as Active</button>
+              </div>
+              <div id="ai-test-result" class="settings-alert" style="display:none;margin-top:1rem;"></div>
+            </div>
+
+            <!-- ── TAB: Generation Defaults ──────────────────────────── -->
+            <div id="settings-generation" class="settings-section">
+              <div class="settings-section-header">
+                <h3>Generation Defaults</h3>
+                <p>Pre-fill the generator form on every page load.</p>
+              </div>
+              <form id="generation-defaults-form">
+                <div class="editor-row" style="grid-template-columns:1fr 1fr;gap:1.5rem;">
+                  <div class="form-group">
+                    <label>Default Fitness Goal</label>
+                    <select id="default-goal">
+                      <option value="">No default</option>
+                      <option value="high_protein">High Protein</option>
+                      <option value="low_carb">Low Carb</option>
+                      <option value="low_fat">Low Fat</option>
+                      <option value="muscle_gain">Muscle Gain</option>
+                      <option value="weight_loss">Weight Loss</option>
+                      <option value="balanced_macros">Balanced Macros</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Default Meal Type</label>
+                    <select id="default-meal-type">
+                      <option value="">No default</option>
+                      <option value="breakfast">Breakfast</option>
+                      <option value="lunch">Lunch</option>
+                      <option value="dinner">Dinner</option>
+                      <option value="snack">Snack</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group" style="max-width:180px;">
+                  <label>Default Batch Amount</label>
+                  <input type="number" id="default-batch-amount" min="1" max="100" placeholder="1">
+                </div>
+                <div id="gen-defaults-msg" class="settings-alert" style="display:none;margin-bottom:1rem;"></div>
+                <button type="submit" class="primary-btn">Save Defaults</button>
+              </form>
+            </div>
+
+            <!-- ── TAB: Users & Account ──────────────────────────────── -->
+            <div id="settings-account" class="settings-section">
+              <div class="settings-section-header">
+                <h3>Users &amp; Access Control</h3>
+                <p>Manage users, roles, and your account credentials.</p>
+              </div>
+
+              <!-- Current User Info -->
+              <div class="settings-card">
+                <h4>Current Session</h4>
+                <div id="session-info" style="margin-top:1rem;"></div>
+              </div>
+
+              <!-- Change Password -->
+              <div class="settings-card" style="margin-top:1.5rem;">
+                <h4>Change Password</h4>
+                <form id="change-password-form" style="margin-top:1.5rem;">
+                  <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" id="current-password" autocomplete="current-password">
+                  </div>
+                  <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="new-password" autocomplete="new-password">
+                    <p class="input-help">Minimum 12 characters.</p>
+                  </div>
+                  <div class="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="confirm-password" autocomplete="new-password">
+                  </div>
+                  <div id="pw-change-msg" class="settings-alert" style="display:none;margin-bottom:1rem;"></div>
+                  <button type="submit" class="primary-btn">Change Password</button>
+                </form>
+              </div>
+
+              <!-- User Management (admin-only) -->
+              <div id="user-mgmt-section" class="settings-card" style="margin-top:1.5rem;display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+                  <h4 style="margin:0;">User Management</h4>
+                  <button type="button" id="add-user-btn" class="primary-btn" style="padding:0.4rem 1rem;font-size:0.85rem;">+ Add User</button>
+                </div>
+                <div id="users-table-container">
+                  <p class="text-muted" style="text-align:center;padding:1rem;">Loading users…</p>
+                </div>
+
+                <!-- Add User Form (hidden by default) -->
+                <div id="add-user-form-wrap" style="display:none;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.08);">
+                  <h5 style="margin-bottom:1rem;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">New User</h5>
+                  <form id="add-user-form">
+                    <div class="editor-row" style="grid-template-columns:1fr 1fr;gap:1rem;">
+                      <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="new-user-username" placeholder="username" autocomplete="off">
+                      </div>
+                      <div class="form-group">
+                        <label>Email (optional)</label>
+                        <input type="email" id="new-user-email" placeholder="user@example.com" autocomplete="off">
+                      </div>
+                    </div>
+                    <div class="editor-row" style="grid-template-columns:1fr 1fr;gap:1rem;">
+                      <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="new-user-password" autocomplete="new-password">
+                        <p class="input-help">Minimum 8 characters.</p>
+                      </div>
+                      <div class="form-group">
+                        <label>Role</label>
+                        <select id="new-user-role">
+                          <option value="editor">Editor</option>
+                          <option value="viewer">Viewer</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div id="add-user-msg" class="settings-alert" style="display:none;margin-bottom:1rem;"></div>
+                    <div style="display:flex;gap:1rem;">
+                      <button type="submit" class="primary-btn">Create User</button>
+                      <button type="button" id="cancel-add-user-btn" class="secondary-btn">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── TAB: Security ─────────────────────────────────────── -->
+            <div id="settings-security" class="settings-section">
+              <div class="settings-section-header">
+                <h3>Security Overview</h3>
+                <p>Configured rate limits and recent authentication events.</p>
+              </div>
+              <div class="stats-grid">
+                <div class="stat-card"><div class="stat-label">General API Limit</div><div class="stat-value">200 / 15 min</div></div>
+                <div class="stat-card"><div class="stat-label">Job Creation Limit</div><div class="stat-value">10 / 15 min</div></div>
+                <div class="stat-card"><div class="stat-label">Login Attempt Limit</div><div class="stat-value">5 / 15 min</div></div>
+                <div class="stat-card"><div class="stat-label">Allowed Origins</div><div class="stat-value" id="allowed-origins-display" style="font-size:0.75rem;word-break:break-all;line-height:1.4;">—</div></div>
+              </div>
+              <h4 style="margin:2rem 0 1rem;font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Recent Auth Events</h4>
+              <div id="auth-events-container"></div>
+            </div>
+
+            <!-- ── TAB: Logs ──────────────────────────────────────────── -->
+            <div id="settings-logs" class="settings-section">
+              <div class="settings-section-header">
+                <h3>Application Logs</h3>
+                <p>View and manage system logs from all components.</p>
+              </div>
+              <div class="log-controls">
+                <select id="log-type-filter" style="width:auto;flex:0 0 auto;">
+                  <option value="">All Types</option>
+                  <option value="sys">System</option>
+                  <option value="ai">AI Core</option>
+                  <option value="db">Database</option>
+                  <option value="val">Validation</option>
+                  <option value="success">Success</option>
+                  <option value="error">Error</option>
+                  <option value="auth_success">Auth Success</option>
+                  <option value="auth_fail">Auth Failure</option>
+                </select>
+                <input type="number" id="log-limit-input" value="100" min="10" max="500" style="width:90px;" placeholder="Limit">
+                <button type="button" id="refresh-logs-btn" class="secondary-btn">↻ Refresh</button>
+                <button type="button" id="clear-logs-btn" class="danger-btn" style="margin-left:auto;">🗑 Clear &gt;30 Days</button>
+              </div>
+              <div id="logs-panel-container" style="margin-top:1rem;"></div>
+            </div>
+
+            <!-- ── TAB: Data Management ───────────────────────────────── -->
+            <div id="settings-data" class="settings-section">
+              <div class="settings-section-header">
+                <h3>Data Management</h3>
+                <p>Backup, restore, and inspect your database.</p>
+              </div>
+              <div class="stats-grid">
+                <div class="stat-card"><div class="stat-label">Total Recipes</div><div class="stat-value" id="stat-total-recipes">—</div></div>
+                <div class="stat-card"><div class="stat-label">Drafts</div><div class="stat-value" id="stat-draft-recipes">—</div></div>
+                <div class="stat-card"><div class="stat-label">Final Recipes</div><div class="stat-value" id="stat-final-recipes">—</div></div>
+                <div class="stat-card"><div class="stat-label">Log Entries</div><div class="stat-value" id="stat-log-entries">—</div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:1.5rem;margin-top:2rem;">
+                <div class="settings-card">
+                  <h4>Export Database</h4>
+                  <p class="input-help" style="margin:0.5rem 0 1rem;">Download all recipes, jobs, and settings as a JSON backup file.</p>
+                  <button type="button" id="export-db-btn" class="secondary-btn" style="border-color:#10b981;color:#10b981;">📥 Export Full Backup</button>
+                </div>
+                <div class="settings-card">
+                  <h4>Import from Backup</h4>
+                  <p class="input-help" style="margin:0.5rem 0 1rem;">Restore recipes from a previously exported JSON file. Recipes with matching IDs are skipped.</p>
+                  <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+                    <input type="file" id="import-file" accept=".json" style="flex:1;min-width:200px;">
+                    <button type="button" id="import-db-btn" class="primary-btn">Import</button>
+                  </div>
+                  <div id="import-result" class="settings-alert" style="display:none;margin-top:1rem;"></div>
+                </div>
+                <div class="settings-card" style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.05);">
+                  <h4 style="color:#ef4444;">⚠ Danger Zone</h4>
+                  <p class="input-help" style="margin:0.5rem 0 1rem;">These actions are permanent and cannot be undone.</p>
+                  <button type="button" id="clear-drafts-btn" class="danger-btn">Delete All Drafts</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── TAB: Recipe Contract ───────────────────────────────── -->
+            <div id="settings-prompts" class="settings-section">
+              <div class="settings-section-header">
+                <h3>AI LLM Calls</h3>
+                <p>Every prompt the app sends to the AI. Edit any prompt to customize how recipes are generated and judged, then save. Use "Reset to Default" to restore the built-in version of any prompt if you make a mistake.</p>
+              </div>
+              <div id="prompts-list"></div>
+            </div>
+
+          </div><!-- /settings-content -->
+        </div><!-- /settings-layout -->
+      </div>
+    </main>
+
+    <!-- Master Workspace Window (Integrated View/Edit/JSON) -->
+      <div id="master-workspace" class="master-workspace">
+        <div class="workspace-window">
+          <div class="workspace-nav">
+            <div class="workspace-tabs">
+              <button class="w-tab-btn active" data-w-tab="master-view">Visual Preview</button>
+              <button class="w-tab-btn" data-w-tab="master-edit">Structured Editor</button>
+              <button class="w-tab-btn" data-w-tab="master-json">Raw JSON</button>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+              <button id="master-save-btn" class="primary-btn">Save Changes</button>
+              <button id="close-workspace-btn" class="secondary-btn" style="padding: 4px 12px; font-size: 1.2rem;">&times;</button>
+            </div>
+          </div>
+
+          <div class="workspace-body">
+            <!-- Tab: View -->
+            <div id="master-view" class="master-tab-content active">
+              <div id="visual-view-integrated"></div>
+            </div>
+
+            <!-- Tab: Edit -->
+            <div id="master-edit" class="master-tab-content">
+              <form id="master-editor-form">
+                <div id="structured-editor-banner" style="display:none;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:6px;padding:0.6rem 1rem;margin-bottom:0.75rem;font-size:0.8rem;color:var(--primary-color);"></div>
+                <div class="editor-tabs">
+                  <button type="button" class="editor-tab-btn active" data-tab="tab-meta">Meta</button>
+                  <button type="button" class="editor-tab-btn" data-tab="tab-recipe">Recipe</button>
+                  <button type="button" class="editor-tab-btn" data-tab="tab-nutrition">Nutrition</button>
+                  <button type="button" class="editor-tab-btn" data-tab="tab-process">Process</button>
+                  <button type="button" class="editor-tab-btn" data-tab="tab-adjust">Adjust</button>
+                </div>
+                
+                <div id="tab-meta" class="editor-section active">
+                  <div class="form-group"><label>Title</label><input type="text" data-path="title"></div>
+                  <div class="form-group"><label>Description</label><textarea data-path="description" rows="3"></textarea></div>
+                  <div class="form-group"><label>Fitness Rationale</label><textarea data-path="fitness_rationale" rows="4"></textarea></div>
+                  <div class="editor-row">
+                    <div class="form-group"><label>Meal Type</label><input type="text" data-path="meal_type"></div>
+                    <div class="form-group"><label>Cuisine</label><input type="text" data-path="cuisine_style"></div>
+                  </div>
+                </div>
+
+                <div id="tab-recipe" class="editor-section">
+                  <div class="editor-row">
+                    <div class="form-group"><label>Prep (min)</label><input type="number" data-path="time.prep_minutes"></div>
+                    <div class="form-group"><label>Cook (min)</label><input type="number" data-path="time.cook_minutes"></div>
+                    <div class="form-group"><label>Servings</label><input type="number" data-path="servings"></div>
+                  </div>
+                  <div class="form-group"><label>Ingredients</label><div id="structured-ingredients-editor" class="structured-list-editor"></div></div>
+                  <div class="form-group"><label>Equipment</label><div class="list-editor-container" data-path="equipment"></div></div>
+                </div>
+
+                <div id="tab-nutrition" class="editor-section">
+                  <h4 class="sub-label">Per Serving</h4>
+                  <div class="editor-row">
+                    <div class="form-group"><label>Calories</label><input type="number" data-path="estimated_nutrition_per_serving.calories"></div>
+                    <div class="form-group"><label>Protein (g)</label><input type="number" data-path="estimated_nutrition_per_serving.protein_g"></div>
+                    <div class="form-group"><label>Carbs (g)</label><input type="number" data-path="estimated_nutrition_per_serving.carbohydrates_g"></div>
+                    <div class="form-group"><label>Fat (g)</label><input type="number" data-path="estimated_nutrition_per_serving.fat_g"></div>
+                  </div>
+                  <div class="editor-row">
+                    <div class="form-group"><label>Fiber (g)</label><input type="number" data-path="estimated_nutrition_per_serving.fiber_g"></div>
+                    <div class="form-group"><label>Sugar (g)</label><input type="number" data-path="estimated_nutrition_per_serving.sugar_g"></div>
+                    <div class="form-group"><label>Sodium (mg)</label><input type="number" data-path="estimated_nutrition_per_serving.sodium_mg"></div>
+                  </div>
+                </div>
+
+                <div id="tab-process" class="editor-section">
+                  <div class="form-group"><label>Preparation Notes</label><div class="list-editor-container" data-path="preparation_notes"></div></div>
+                  <div class="form-group"><label>Instructions</label><div id="structured-instructions-editor" class="structured-list-editor"></div></div>
+                </div>
+
+                <div id="tab-adjust" class="editor-section">
+                  <div class="form-group"><label>Higher Protein</label><textarea data-path="macro_adjustments.higher_protein" rows="3"></textarea></div>
+                  <div class="form-group"><label>Lower Carb</label><textarea data-path="macro_adjustments.lower_carbohydrate" rows="3"></textarea></div>
+                  <div class="form-group"><label>Storage Notes</label><textarea data-path="storage.notes" rows="3"></textarea></div>
+                  <div class="form-group"><label>Safety Note</label><textarea data-path="storage.food_safety" rows="2"></textarea></div>
+                </div>
+              </form>
+            </div>
+
+            <!-- Tab: JSON -->
+            <div id="master-json" class="master-tab-content">
+              <textarea id="raw-json-editor" class="code-editor" style="height: 60vh;"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    <!-- Convert Modal -->
+    <div id="convert-modal" class="login-screen" style="display:none;">
+      <div class="login-card" style="max-width:480px;">
+        <h2 style="margin-top:0;">Convert to a new content type</h2>
+        <p class="login-subtitle" id="convert-source-label">Create a new draft based on this recipe.</p>
+        <div class="form-group">
+          <label>New content type</label>
+          <select id="convert-target-select"></select>
+          <p class="input-help" style="color:var(--text-muted);font-size:0.75rem;margin-top:0.4rem;">The recipe is kept exactly as-is; the AI writes the surrounding content. The result lands in your Drafts inbox.</p>
+        </div>
+        <div id="convert-msg" class="settings-alert" style="display:none;margin-bottom:1rem;"></div>
+        <div style="display:flex;gap:1rem;">
+          <button type="button" id="convert-submit-btn" class="primary-btn">Create Conversion</button>
+          <button type="button" id="convert-cancel-btn" class="secondary-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Screen Overlay -->
+    <div id="login-screen" class="login-screen">
+      <div class="login-card">
+        <h1 class="login-logo">Nutrition AI <span style="color:var(--primary-color)">Pro</span></h1>
+        <p class="login-subtitle">Sign in to your account.</p>
+        <form id="login-form" autocomplete="on">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="login-username" placeholder="e.g. admin" autocomplete="username">
+            <p class="input-help" style="color:var(--text-muted);font-size:0.75rem;margin-top:0.25rem;">Enter your app username, not your email address.</p>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+          </div>
+          <div id="login-error" class="login-error"></div>
+          <button type="submit" class="primary-btn" style="width:100%; padding:1rem; font-size:1rem;">Sign In</button>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
