@@ -121,6 +121,7 @@ If the GHCR package is not available yet or an anonymous pull is denied, use the
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [SUPPORT.md](SUPPORT.md)
+- [COMMERCIAL.md](COMMERCIAL.md)
 - [docs/RELEASE_SECURITY_REVIEW.md](docs/RELEASE_SECURITY_REVIEW.md)
 - [docs/boundary-diagram.md](docs/boundary-diagram.md)
 - [docs/data-flow-diagram.md](docs/data-flow-diagram.md)
@@ -189,4 +190,4 @@ See [SUPPORT.md](SUPPORT.md) for support boundaries and what to include in a sup
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Business Source License 1.1 with the same commercial-use model used for `cybertabletop`. See [LICENSE](LICENSE) and [COMMERCIAL.md](COMMERCIAL.md).
