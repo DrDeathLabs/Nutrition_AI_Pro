@@ -6,6 +6,8 @@ It helps content teams move beyond one-shot prompting by combining structured re
 
 Use it to produce recipe cards, blog posts, social assets, meal-prep guides, and email newsletter drafts with a reusable draft library and a human-in-the-loop workflow instead of disposable chat sessions.
 
+![Nutrition AI Pro application overview](docs/assets/readme/app-overview.png)
+
 ## Start Here
 
 | If you want to... | Go here |
