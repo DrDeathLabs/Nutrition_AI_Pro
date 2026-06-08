@@ -208,7 +208,7 @@ Known residual risks and deployment requirements are documented in [SECURITY.md]
 - prompt-tuned recipe testing and content experimentation
 - internal publishing workflows that need reviewable structured outputs instead of chat transcripts
 
-Internal organizational use is permitted by the source-available license. Hosted service, resale, white-labeling, and paid third-party service delivery require separate permission.
+For-profit company use is not automatically permitted by the public license, even for internal-only recipe or content workflows. Company or commercial use requires separate written permission from the maintainer.
 
 ## AI Safety Notes
 
@@ -323,9 +323,9 @@ Hosted-provider API keys are encrypted at rest in the application database, but 
 
 Nutrition AI Pro is source-available under the Business Source License 1.1.
 
-The public license allows internal use by organizations, including commercial organizations, for their own recipe development, editorial workflows, evaluation, development, testing, education, and research.
+The public license allows personal, educational, nonprofit, government, public-sector, community, evaluation, development, testing, and research use, but it does not automatically grant rights to for-profit companies or other commercial organizations.
 
-You may not offer Nutrition AI Pro as a hosted service, managed service, SaaS product, paid commercial offering, white-labeled product, material feature of another commercial tool, or paid service-delivery platform unless you have separate written permission from the maintainer.
+You may not use Nutrition AI Pro inside a for-profit company or commercial organization, offer it as a hosted service, managed service, SaaS product, paid commercial offering, white-labeled product, material feature of another commercial tool, or paid service-delivery platform unless you have separate written permission from the maintainer.
 
 See [LICENSE](LICENSE) and [COMMERCIAL.md](COMMERCIAL.md). Because the license restricts some production and commercial uses before the Change Date, this project is not open source under the OSI Open Source Definition. Each specific version changes to the MIT License four years after that version is first publicly distributed.
 
