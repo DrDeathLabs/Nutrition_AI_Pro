@@ -20,14 +20,16 @@ test.describe('Library view', () => {
     await expect(page.locator('#lib-search')).toBeVisible();
     await expect(page.locator('#lib-filter-meal')).toBeVisible();
     await expect(page.locator('#lib-sort')).toBeVisible();
-    await expect(page.locator('#recipe-table-body')).toBeVisible();
+    await expect(page.locator('#view-library .cms-table-container')).toBeVisible();
+    await expect(page.locator('#page-info')).toBeVisible();
   });
 
   test('search filter is interactive', async ({ page }) => {
     await page.click('[data-target="view-library"]');
     await page.fill('#lib-search', 'chicken');
     await page.keyboard.press('Enter');
-    await expect(page.locator('#recipe-table-body')).toBeVisible();
+    await expect(page.locator('#lib-search')).toHaveValue('chicken');
+    await expect(page.locator('#view-library .cms-table-container')).toBeVisible();
   });
 
   test('pagination controls are present', async ({ page }) => {
