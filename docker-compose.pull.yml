@@ -18,7 +18,7 @@ services:
       retries: 10
 
   recipe-generator:
-    image: ${IMAGE_NAME:-ghcr.io/drdeathlabs/recipe_generator_app}:${IMAGE_TAG:-latest}
+    image: ${IMAGE_NAME:-ghcr.io/drdeathlabs/nutrition_ai_pro}:${IMAGE_TAG:-latest}
     container_name: recipe-generator
     env_file: .env
     environment:

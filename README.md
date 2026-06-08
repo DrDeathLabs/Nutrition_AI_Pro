@@ -21,14 +21,14 @@ That means the app behaves more like a production workflow than a simple chat wr
 
 The canonical published package path for this repository is:
 
-`ghcr.io/drdeathlabs/recipe_generator_app`
+`ghcr.io/drdeathlabs/nutrition_ai_pro`
 
 | Path | Use it when | Status |
 | --- | --- | --- |
 | `Published GHCR image` | You want the normal release install path and a public package is available | Intended primary path |
 | `Source build` | You want to build locally, develop locally, or the first public image is not available yet | Supported fallback |
 
-If `docker pull ghcr.io/drdeathlabs/recipe_generator_app:latest` returns `denied` or `not found`, use the source-build path until the public package has been published and made visible.
+If `docker pull ghcr.io/drdeathlabs/nutrition_ai_pro:latest` returns `denied` or `not found`, use the source-build path until the public package has been published and made visible.
 
 ## Feature Areas
 
@@ -77,7 +77,7 @@ Create `.env` from `.env.example` and replace the placeholder values. At minimum
 Use this path after the release workflow has published the image:
 
 ```bash
-docker pull ghcr.io/drdeathlabs/recipe_generator_app:latest
+docker pull ghcr.io/drdeathlabs/nutrition_ai_pro:latest
 docker compose -f docker-compose.pull.yml up -d
 ```
 

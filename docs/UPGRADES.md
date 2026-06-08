@@ -43,7 +43,7 @@ This rebuilds the app image locally and restarts the stack against the existing 
 Use this path when you run the app from the published GHCR image.
 
 ```bash
-docker pull ghcr.io/drdeathlabs/recipe_generator_app:latest
+docker pull ghcr.io/drdeathlabs/nutrition_ai_pro:latest
 docker compose -f docker-compose.pull.yml up -d
 ```
 

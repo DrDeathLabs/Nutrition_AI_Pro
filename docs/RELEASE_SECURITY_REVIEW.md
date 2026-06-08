@@ -94,7 +94,7 @@ The documentation set was validated against the running app and current reposito
 
 - source-build install path was validated locally with `docker compose up -d --build`
 - pull-based Compose path was validated structurally and locally against a canonically tagged image using `docker-compose.pull.yml`
-- public anonymous GHCR pull remains to be verified after the first real public publish of `ghcr.io/drdeathlabs/recipe_generator_app:latest`
+- public anonymous GHCR pull remains to be verified after the first real public publish of `ghcr.io/drdeathlabs/nutrition_ai_pro:latest`
 - user-guide workflows were cross-checked against current RBAC, the Generator UI, Drafts, Library, conversion rules, and admin-only settings visibility
 - operator docs were checked against the current Compose files, `/healthz`, export/import behavior, and the live Docker layout on this system
 

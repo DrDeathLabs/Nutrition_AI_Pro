@@ -23,7 +23,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready -U postgres -d recipe_test_db
+          --health-cmd="pg_isready -U postgres -d recipe_test_db"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -71,10 +71,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITLEAKS_CONFIG: .gitleaks.toml
+      - name: Run Gitleaks
+        run: docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:8.24.3 detect --source=/repo --config=/repo/.gitleaks.toml --no-banner
 
   docker-smoke:
     runs-on: ubuntu-latest

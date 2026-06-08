@@ -17,7 +17,7 @@ If you are using the published-image path, verify whether the package actually e
 
 Symptom:
 
-- `docker pull ghcr.io/drdeathlabs/recipe_generator_app:latest` fails
+- `docker pull ghcr.io/drdeathlabs/nutrition_ai_pro:latest` fails
 
 Likely causes:
 
@@ -28,7 +28,7 @@ Likely causes:
 Recovery:
 
 1. verify the GitHub release workflow completed
-2. verify the package exists at `ghcr.io/drdeathlabs/recipe_generator_app`
+2. verify the package exists at `ghcr.io/drdeathlabs/nutrition_ai_pro`
 3. verify the package is public if anonymous pull is expected
 4. fall back to `docker compose up -d --build` until the image is available
 

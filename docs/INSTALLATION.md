@@ -18,7 +18,7 @@ At the end of either path you should have:
 
 Canonical image path:
 
-`ghcr.io/drdeathlabs/recipe_generator_app`
+`ghcr.io/drdeathlabs/nutrition_ai_pro`
 
 Canonical entrypoints:
 
@@ -79,7 +79,7 @@ This is the intended primary install path for released builds.
 
 The compose file defaults to:
 
-`ghcr.io/drdeathlabs/recipe_generator_app:latest`
+`ghcr.io/drdeathlabs/nutrition_ai_pro:latest`
 
 You do not need to set `IMAGE_NAME` or `IMAGE_TAG` if you are using the canonical package path and `latest`.
 
@@ -104,7 +104,7 @@ export IMAGE_TAG=v1.0.0
 ### Pull and start
 
 ```bash
-docker pull ghcr.io/drdeathlabs/recipe_generator_app:latest
+docker pull ghcr.io/drdeathlabs/nutrition_ai_pro:latest
 docker compose -f docker-compose.pull.yml up -d
 ```
 
@@ -117,7 +117,7 @@ docker compose -f docker-compose.pull.yml up -d
 
 ### If `docker pull` fails
 
-If `docker pull ghcr.io/drdeathlabs/recipe_generator_app:latest` returns `denied` or `not found`:
+If `docker pull ghcr.io/drdeathlabs/nutrition_ai_pro:latest` returns `denied` or `not found`:
 
 1. confirm the release workflow completed successfully
 2. confirm the GHCR package is public if anonymous pulls are expected
@@ -153,7 +153,7 @@ Then:
 ### Update later
 
 ```bash
-docker pull ghcr.io/drdeathlabs/recipe_generator_app:latest
+docker pull ghcr.io/drdeathlabs/nutrition_ai_pro:latest
 docker compose -f docker-compose.pull.yml up -d
 ```
 

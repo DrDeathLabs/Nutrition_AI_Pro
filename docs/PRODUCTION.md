@@ -145,7 +145,7 @@ Use [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for:
 
 The intended primary release install path is GHCR:
 
-`ghcr.io/drdeathlabs/recipe_generator_app`
+`ghcr.io/drdeathlabs/nutrition_ai_pro`
 
 Until the first public package has been verified with an anonymous pull, source-build remains the practical fallback path.
 
