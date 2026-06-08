@@ -140,22 +140,23 @@ describe('POST /api/auth/change-password', () => {
     expect(res.body.error).toMatch(/128/);
   });
 
-  it('returns 401 or 503 when currentPassword is wrong (503 if DB unavailable)', async () => {
+  it('returns 401, 409, or 503 when currentPassword is wrong', async () => {
     const res = await a.post('/api/auth/change-password')
       .send({ currentPassword: 'definitely-wrong-password', newPassword: 'validnewpassword123' });
-    // 401 if DB available and password wrong; 503 if DB unavailable in test env
-    expect([401, 503]).toContain(res.status);
+    // 401 if DB-backed auth is available and the current password is wrong;
+    // 409 if the session is bootstrap-only and therefore not DB-backed;
+    // 503 if the DB is unavailable in the test environment.
+    expect([401, 409, 503]).toContain(res.status);
     expect(res.body.error).toBeTruthy();
   });
 
-  // This test will return 503 in test env (no DB) or 200 if DB is available
-  it('returns 200 or 503 (DB required) when credentials are correct', async () => {
+  it('returns 200, 409, or 503 when credentials are correct', async () => {
     const res = await a.post('/api/auth/change-password')
       .send({
         currentPassword: process.env.ADMIN_PASSWORD,
         newPassword: 'validnewpassword456!!',
       });
-    expect([200, 503]).toContain(res.status);
+    expect([200, 409, 503]).toContain(res.status);
   });
 });
 
