@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { getApp, makeToken, makeEditorToken, makeViewerToken, authed } from '../helpers/server.js';
+import { getApp, makeToken, makeEditorToken, makeViewerToken, authed, dbAvailable } from '../helpers/server.js';
 
 let app, a;
 beforeAll(async () => {
@@ -22,10 +22,10 @@ describe('POST /api/auth/login', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns 401 for wrong password (no username — env-var path)', async () => {
+  it('returns an auth-layer error for wrong password without username', async () => {
     const res = await request(app).post('/api/auth/login')
       .set('Content-Type', 'application/json').send({ password: 'wrongpassword' });
-    expect(res.status).toBe(401);
+    expect([400, 401]).toContain(res.status);
     expect(res.body.error).toBeTruthy();
   });
 
@@ -46,16 +46,19 @@ describe('POST /api/auth/login', () => {
     expect(body).not.toContain('ADMIN_PASSWORD');
   });
 
-  // Backward-compat: if no username, the env-var path still runs (for correctness test)
-  it('returns 200, 401, or 429 for env password without username', async () => {
+  it('uses bootstrap-only fallback when no username is provided', async () => {
     const res = await request(app).post('/api/auth/login')
       .set('Content-Type', 'application/json')
       .send({ password: process.env.ADMIN_PASSWORD });
-    // Without a username: env-var comparison path; 429 possible from rate limiter
-    expect([200, 401, 429]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body.token).toBeTruthy();
-    }
+    if (dbAvailable) expect([400, 429]).toContain(res.status);
+    else expect([200, 401, 429]).toContain(res.status);
+  });
+
+  it('allows username + password login for the seeded admin when DB-backed auth is available', async () => {
+    const res = await request(app).post('/api/auth/login')
+      .set('Content-Type', 'application/json')
+      .send({ username: process.env.INITIAL_ADMIN_USERNAME || 'admin', password: process.env.ADMIN_PASSWORD });
+    expect(dbAvailable ? [200, 429] : [200, 401, 429]).toContain(res.status);
   });
 });
 

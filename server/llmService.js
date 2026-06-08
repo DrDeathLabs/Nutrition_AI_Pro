@@ -668,7 +668,7 @@ export async function generateRecipeWithProvider(goal, provider, settings, exist
 
 // ─── Generic JSON LLM Call (for critic and other non-recipe tasks) ───────────
 
-async function callLlmJson(systemPrompt, userPrompt, provider, settings, onChunk = null) {
+async function callLlmJson(systemPrompt, userPrompt, provider, settings, _onChunk = null) {
   switch (provider) {
     case 'claude': {
       const apiKey = settings.claude_api_key;

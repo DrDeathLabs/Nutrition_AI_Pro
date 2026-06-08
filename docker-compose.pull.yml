@@ -18,18 +18,15 @@ services:
       retries: 10
 
   recipe-generator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: recipe-generator-app
+    image: ${IMAGE_NAME:-ghcr.io/drdeathlabs/recipe_generator_app}:${IMAGE_TAG:-latest}
     container_name: recipe-generator
     env_file: .env
     environment:
       POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_PORT: 5432
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY}

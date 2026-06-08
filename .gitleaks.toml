@@ -1,0 +1,22 @@
+title = "recipe_generator_app gitleaks config"
+
+[allowlist]
+description = "Known test/demo placeholders used in examples, tests, and CI"
+regexes = [
+  '''test-secret-key-at-least-32-characters-long-for-testing-only''',
+  '''ci-test-secret-key-at-least-32-characters-long-xxxxxx''',
+  '''changeme_[A-Za-z0-9_]+''',
+  '''e2e-test-password''',
+  '''e2e0{10,}''',
+  '''e2e1{10,}''',
+  '''ci-test-admin-password''',
+  '''testpassword123''',
+  '''sk-ant-(sensitive-key|test|\.\.\.)'''
+]
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)test/''',
+  '''(^|/)e2e/''',
+  '''(^|/)\.github/workflows/''',
+  '''(^|/)docs/'''
+]

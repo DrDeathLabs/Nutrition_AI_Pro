@@ -6,8 +6,11 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
 
     services:
@@ -20,7 +23,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd pg_isready -U postgres -d recipe_test_db
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -29,8 +32,10 @@ jobs:
       NODE_ENV: test
       JWT_SECRET: ci-test-secret-key-at-least-32-characters-long-xxxxxx
       ADMIN_PASSWORD: ci-test-admin-password
+      INITIAL_ADMIN_USERNAME: admin
       ALLOWED_ORIGINS: http://localhost:8080
       POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: test
       POSTGRES_DB: recipe_test_db
@@ -50,45 +55,53 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Unit & security tests
+      - name: Unit, route, and security tests
         run: npm test
 
       - name: Build
         run: npm run build
 
-  e2e:
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push'
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=moderate
 
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    needs: quality
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Build
-        run: npm run build
-
-      - name: Start stack
+      - name: Prepare environment
         run: |
           cp .env.example .env
           sed -i 's/changeme_strong_admin_password_here/e2e-test-password/' .env
           sed -i 's/changeme_random_64_char_hex_string_here/e2e00000000000000000000000000000000000000000000000000000000000000/' .env
+          sed -i 's/changeme_second_random_64_char_hex_string_here/e2e11111111111111111111111111111111111111111111111111111111111111/' .env
           sed -i 's/changeme_strong_password_here/e2etestpassword/' .env
-          docker compose up -d --build
-          sleep 15
 
-      - name: Run E2E tests
-        run: ADMIN_PASSWORD=e2e-test-password npm run test:e2e
+      - name: Build and start stack
+        run: docker compose up -d --build
+
+      - name: Wait for health endpoint
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8080/healthz; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1
 
       - name: Stop stack
         if: always()

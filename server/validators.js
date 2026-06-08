@@ -17,7 +17,7 @@ export const KNOWN_SETTING_KEYS = new Set([
   'gemini_api_key', 'gemini_model',
   'default_goal', 'default_meal_type', 'default_batch_amount',
   'log_retention_days',
-  // system_contract is managed via its own endpoints, not POST /api/settings
+  // Prompt registry entries are managed via /api/prompts, not POST /api/settings.
 ]);
 
 // Values for these keys are masked in GET /api/settings responses

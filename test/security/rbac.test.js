@@ -5,113 +5,87 @@ import { getApp, makeAdminToken, makeEditorToken, makeViewerToken } from '../hel
 let app;
 beforeAll(async () => { app = await getApp(); });
 
-function bearer(token) {
-  return { Authorization: `Bearer ${token}` };
+const ADMIN_ONLY = [
+  ['GET',    '/api/logs',                  null],
+  ['GET',    '/api/settings',              null],
+  ['GET',    '/api/prompts',               null],
+  ['GET',    '/api/export',                null],
+  ['GET',    '/api/users',                 null],
+  ['GET',    '/api/admin/stats',           null],
+  ['GET',    '/api/system-info',           null],
+  ['POST',   '/api/import',                { recipes: [], settings: [] }],
+  ['POST',   '/api/settings',              { settings: [] }],
+  ['POST',   '/api/users',                 { username: 'u', password: 'password123', role: 'editor' }],
+  ['POST',   '/api/users/999/reset-password', { new_password: 'reset123456' }],
+  ['PUT',    '/api/prompts/system_contract', { value: 'test' }],
+  ['DELETE', '/api/logs',                  { days: 30 }],
+  ['DELETE', '/api/users/999',             null],
+  ['DELETE', '/api/prompts/system_contract', null],
+];
+
+const EDITOR_OR_ADMIN = [
+  ['POST', '/api/jobs',              { goal: 'high protein', amount: 1 }],
+  ['POST', '/api/recipes/1/finalize', null],
+  ['PUT',  '/api/recipes/1',         { title: 't', data: {}, status: 'draft' }],
+];
+
+const AUTHENTICATED_READS = [
+  ['GET', '/api/recipes'],
+  ['GET', '/api/jobs'],
+  ['GET', '/api/worker-status'],
+  ['GET', '/api/auth/me'],
+];
+
+function send(method, path, token, body = null) {
+  const req = request(app)[method.toLowerCase()](path)
+    .set('Authorization', `Bearer ${token}`);
+  if (body) req.set('Content-Type', 'application/json');
+  return body ? req.send(body) : req;
 }
 
-// Admin-only endpoints must return 403 for editor and viewer
-const ADMIN_ONLY = [
-  ['DELETE', '/api/logs',             { days: 30 }],
-  ['POST',   '/api/settings',         { settings: [] }],
-  ['GET',    '/api/export',           null],
-  ['POST',   '/api/import',           { recipes: [], settings: [] }],
-  ['GET',    '/api/users',            null],
-  ['POST',   '/api/users',            { username: 'u', password: 'p', role: 'editor' }],
-  ['DELETE', '/api/users/999',        null],
-  ['POST',   '/api/users/999/reset-password', { new_password: 'reset123456' }],
-  ['PUT',    '/api/system-contract',  { contract: 'test' }],
-  ['DELETE', '/api/system-contract',  null],
-];
-
-describe('Admin-only endpoints: editor gets 403', () => {
+describe('Admin-only endpoints', () => {
   it.each(ADMIN_ONLY)('%s %s returns 403 for editor', async (method, path, body) => {
-    const editorToken = makeEditorToken();
-    const req = request(app)[method.toLowerCase()](path)
-      .set('Content-Type', 'application/json')
-      .set('Authorization', `Bearer ${editorToken}`);
-    const res = body ? await req.send(body) : await req;
+    const res = await send(method, path, makeEditorToken(), body);
     expect(res.status).toBe(403);
   });
-});
 
-describe('Admin-only endpoints: viewer gets 403', () => {
   it.each(ADMIN_ONLY)('%s %s returns 403 for viewer', async (method, path, body) => {
-    const viewerToken = makeViewerToken();
-    const req = request(app)[method.toLowerCase()](path)
-      .set('Content-Type', 'application/json')
-      .set('Authorization', `Bearer ${viewerToken}`);
-    const res = body ? await req.send(body) : await req;
+    const res = await send(method, path, makeViewerToken(), body);
     expect(res.status).toBe(403);
   });
 });
 
-// Editor-only endpoints must return 403 for viewer
-const EDITOR_OR_ADMIN = [
-  ['POST', '/api/jobs',             { goal: 'high protein', amount: 1 }],
-  ['POST', '/api/recipes/1/finalize', null],
-  ['PUT',  '/api/recipes/1',        { title: 't', data: {}, status: 'draft' }],
-];
-
-describe('Editor+ endpoints: viewer gets 403', () => {
+describe('Editor-only endpoints', () => {
   it.each(EDITOR_OR_ADMIN)('%s %s returns 403 for viewer', async (method, path, body) => {
-    const viewerToken = makeViewerToken();
-    const req = request(app)[method.toLowerCase()](path)
-      .set('Content-Type', 'application/json')
-      .set('Authorization', `Bearer ${viewerToken}`);
-    const res = body ? await req.send(body) : await req;
+    const res = await send(method, path, makeViewerToken(), body);
     expect(res.status).toBe(403);
   });
 });
 
-// All-authenticated endpoints must let viewer through (not 403)
-const VIEWER_ACCESSIBLE = [
-  ['GET', '/api/recipes',        null],
-  ['GET', '/api/jobs',           null],
-  ['GET', '/api/logs',           null],
-  ['GET', '/api/settings',       null],
-  ['GET', '/api/admin/stats',    null],
-  ['GET', '/api/system-contract', null],
-  ['GET', '/api/system-info',    null],
-  ['GET', '/api/worker-status',  null],
-];
-
-describe('Viewer-accessible endpoints: viewer does not get 403', () => {
-  it.each(VIEWER_ACCESSIBLE)('%s %s does not return 403 for viewer', async (method, path) => {
-    const viewerToken = makeViewerToken();
-    const res = await request(app)[method.toLowerCase()](path)
-      .set('Authorization', `Bearer ${viewerToken}`);
+describe('Authenticated non-admin reads', () => {
+  it.each(AUTHENTICATED_READS)('%s %s does not return 403 for viewer', async (method, path) => {
+    const res = await send(method, path, makeViewerToken());
     expect(res.status).not.toBe(403);
   });
 });
 
-describe('Admin: admin can access everything (no 403)', () => {
+describe('Admin access', () => {
   it.each([...ADMIN_ONLY, ...EDITOR_OR_ADMIN])('%s %s does not return 403 for admin', async (method, path, body) => {
-    const adminToken = makeAdminToken();
-    const req = request(app)[method.toLowerCase()](path)
-      .set('Content-Type', 'application/json')
-      .set('Authorization', `Bearer ${adminToken}`);
-    const res = body ? await req.send(body) : await req;
-    // Admin must not get 403 (may get other codes due to missing DB in test env)
+    const res = await send(method, path, makeAdminToken(), body);
     expect(res.status).not.toBe(403);
   });
 });
 
-describe('Role is read from JWT, not re-queried from DB per request', () => {
-  it('editor token produces 403 on admin route without any DB call', async () => {
-    const editorToken = makeEditorToken();
-    // DELETE /api/recipes/:id is admin-only
+describe('JWT role enforcement is local to the token', () => {
+  it('editor token produces 403 on an admin route before any DB-backed authorization lookup is needed', async () => {
     const res = await request(app).delete('/api/recipes/1')
-      .set('Authorization', `Bearer ${editorToken}`);
-    // Must be 403 — no DB roundtrip needed to determine role
+      .set('Authorization', `Bearer ${makeEditorToken()}`);
     expect(res.status).toBe(403);
   });
 
-  it('admin token passes role check without DB lookup', async () => {
-    const adminToken = makeAdminToken();
-    // GET /api/users is admin-only — role from JWT, no DB for auth decision
+  it('admin token passes the role gate on an admin route', async () => {
     const res = await request(app).get('/api/users')
-      .set('Authorization', `Bearer ${adminToken}`);
-    // Not 403 (role allowed); may be 500 if no DB — that's fine
+      .set('Authorization', `Bearer ${makeAdminToken()}`);
     expect(res.status).not.toBe(403);
   });
 });

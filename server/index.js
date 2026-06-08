@@ -25,6 +25,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 80;
+const POSTGRES_PORT = parseInt(process.env.POSTGRES_PORT || '5432', 10);
+const SETTINGS_ENCRYPTION_KEY = crypto.createHash('sha256')
+  .update(process.env.SETTINGS_ENCRYPTION_KEY || process.env.JWT_SECRET || '')
+  .digest();
+const ENCRYPTED_VALUE_PREFIX = 'enc:v1:';
 
 // --- SECURITY MIDDLEWARE ---
 app.use(helmet({
@@ -94,9 +99,53 @@ const pool = new Pool({
   host: process.env.POSTGRES_HOST || 'db',
   database: process.env.POSTGRES_DB,
   password: process.env.POSTGRES_PASSWORD,
-  port: 5432,
+  port: Number.isInteger(POSTGRES_PORT) ? POSTGRES_PORT : 5432,
   connectionTimeoutMillis: 5000,
 });
+
+let dbReady = false;
+let lastDbInitError = null;
+let lastLogRetentionRun = 0;
+
+function isEncryptedValue(value) {
+  return typeof value === 'string' && value.startsWith(ENCRYPTED_VALUE_PREFIX);
+}
+
+function encryptSensitiveValue(value) {
+  if (typeof value !== 'string' || value.length === 0 || isEncryptedValue(value)) return value;
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', SETTINGS_ENCRYPTION_KEY, iv);
+  const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `${ENCRYPTED_VALUE_PREFIX}${iv.toString('base64')}:${authTag.toString('base64')}:${ciphertext.toString('base64')}`;
+}
+
+function decryptSensitiveValue(value) {
+  if (typeof value !== 'string' || value.length === 0 || !isEncryptedValue(value)) return value;
+  const parts = value.slice(ENCRYPTED_VALUE_PREFIX.length).split(':');
+  if (parts.length !== 3) throw new Error('Malformed encrypted setting value');
+
+  const [ivB64, tagB64, encryptedB64] = parts;
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    SETTINGS_ENCRYPTION_KEY,
+    Buffer.from(ivB64, 'base64')
+  );
+  decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
+  const plaintext = Buffer.concat([
+    decipher.update(Buffer.from(encryptedB64, 'base64')),
+    decipher.final(),
+  ]);
+  return plaintext.toString('utf8');
+}
+
+async function loadSettingsMap(clientOrPool = pool) {
+  const { rows } = await clientOrPool.query('SELECT key, value FROM settings');
+  return Object.fromEntries(rows.map(row => ([
+    row.key,
+    SENSITIVE_SETTING_KEYS.has(row.key) ? decryptSensitiveValue(row.value) : row.value,
+  ])));
+}
 
 async function initDb() {
   const maxRetries = process.env.NODE_ENV === 'test' ? 1 : 5;
@@ -197,6 +246,19 @@ async function initDb() {
           );
         }
 
+        // Encrypt any previously stored plaintext provider API keys in place.
+        const { rows: secretRows } = await client.query(
+          'SELECT key, value FROM settings WHERE key = ANY($1)',
+          [[...SENSITIVE_SETTING_KEYS]]
+        );
+        for (const row of secretRows) {
+          if (!row.value || isEncryptedValue(row.value)) continue;
+          await client.query(
+            'UPDATE settings SET value = $1 WHERE key = $2',
+            [encryptSensitiveValue(row.value), row.key]
+          );
+        }
+
         // Seed admin user from env vars if users table is empty
         const userCount = await client.query('SELECT COUNT(*) FROM users');
         if (parseInt(userCount.rows[0].count, 10) === 0) {
@@ -218,11 +280,15 @@ async function initDb() {
           "INSERT INTO terminal_logs (message, type) VALUES ($1, $2)",
           ['Persistence layer verified. History synchronization ready.', 'sys']
         );
+        dbReady = true;
+        lastDbInitError = null;
         return;
       } finally {
         client.release();
       }
     } catch (err) {
+      dbReady = false;
+      lastDbInitError = err.message;
       retries--;
       console.error(`DB init failed, ${retries} retries left:`, err.message);
       if (retries === 0) {
@@ -234,6 +300,28 @@ async function initDb() {
       }
       await new Promise(r => setTimeout(r, retryDelay));
     }
+  }
+}
+
+async function runLogRetentionCleanup() {
+  if (!dbReady) return;
+  const now = Date.now();
+  if (now - lastLogRetentionRun < 6 * 60 * 60 * 1000) return;
+  lastLogRetentionRun = now;
+
+  try {
+    const { rows } = await pool.query(
+      "SELECT value FROM settings WHERE key = 'log_retention_days' LIMIT 1"
+    );
+    const retentionDays = parseInt(rows[0]?.value || '30', 10);
+    if (!Number.isInteger(retentionDays) || retentionDays <= 0) return;
+
+    await pool.query(
+      "DELETE FROM terminal_logs WHERE created_at < NOW() - ($1 || ' days')::INTERVAL",
+      [retentionDays]
+    );
+  } catch (err) {
+    console.error('Automatic log retention cleanup failed:', err.message);
   }
 }
 
@@ -357,8 +445,7 @@ async function workerLoop() {
       await pool.query("UPDATE jobs SET status = 'processing' WHERE id = $1", [job.id]);
     }
 
-    const { rows: settingsRows } = await pool.query("SELECT * FROM settings");
-    const settings = Object.fromEntries(settingsRows.map(r => [r.key, r.value]));
+    const settings = await loadSettingsMap();
     const { rows: existingRows } = await pool.query("SELECT title FROM recipes");
     const existingTitles = existingRows.map(r => r.title);
 
@@ -735,12 +822,35 @@ async function runConversionJob(job, settings, provider) {
 }
 
 if (process.env.NODE_ENV !== 'test') setInterval(workerLoop, 5000);
+if (process.env.NODE_ENV !== 'test') {
+  setInterval(() => {
+    runLogRetentionCleanup().catch(() => {});
+  }, 60 * 60 * 1000);
+}
+
+// --- HEALTH CHECKS ---
+app.get('/healthz', async (_req, res) => {
+  if (!dbReady) {
+    return res.status(503).json({
+      ok: false,
+      dbReady: false,
+      error: lastDbInitError || 'Database initialization in progress',
+    });
+  }
+
+  try {
+    await pool.query('SELECT 1');
+    return res.json({ ok: true, dbReady: true });
+  } catch (err) {
+    return res.status(503).json({ ok: false, dbReady: false, error: err.message });
+  }
+});
 
 // --- AUTH ROUTES ---
 app.use('/api/auth', createAuthRouter(express, loginLimiter, pool));
 
 // --- SYSTEM INFO ---
-app.get('/api/system-info', requireAuth, (req, res) => {
+app.get('/api/system-info', requireAuth, requireRole('admin'), (req, res) => {
   res.json({ allowedOrigins });
 });
 
@@ -955,7 +1065,7 @@ app.post('/api/jobs/:id/cancel', requireAuth, requireRole('admin', 'editor'), as
 
 // --- LOGS ---
 
-app.get('/api/logs', requireAuth, async (req, res) => {
+app.get('/api/logs', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const since = Math.max(0, parseInt(req.query.since, 10) || 0);
     const safeType = req.query.type ? String(req.query.type).slice(0, 20) : null;
@@ -1032,7 +1142,7 @@ app.delete('/api/logs', requireAuth, requireRole('admin'), async (req, res) => {
 
 // --- SETTINGS ---
 
-app.get('/api/settings', requireAuth, async (req, res) => {
+app.get('/api/settings', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     // Exclude the password hash and the large prompt blobs (managed via /api/prompts).
     const { rows } = await pool.query(
@@ -1071,7 +1181,10 @@ app.post('/api/settings', requireAuth, requireRole('admin'), async (req, res) =>
       if (s.key === 'ollama_url' && s.value) {
         validateOllamaUrl(s.value);
       }
-      toSave.push(s);
+      toSave.push({
+        ...s,
+        value: SENSITIVE_SETTING_KEYS.has(s.key) ? encryptSensitiveValue(s.value) : s.value,
+      });
     }
 
     for (const s of toSave) {
@@ -1093,7 +1206,7 @@ app.post('/api/settings', requireAuth, requireRole('admin'), async (req, res) =>
 
 // Returns every prompt in the registry with its current value and source.
 // value = admin override if present, else the built-in default.
-app.get('/api/prompts', requireAuth, async (req, res) => {
+app.get('/api/prompts', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const { rows } = await pool.query(
       "SELECT key, value FROM settings WHERE key = ANY($1)",
@@ -1161,7 +1274,7 @@ app.delete('/api/prompts/:key', requireAuth, requireRole('admin'), async (req, r
 
 // --- ADMIN STATS ---
 
-app.get('/api/admin/stats', requireAuth, async (req, res) => {
+app.get('/api/admin/stats', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const [recipesRes, jobsRes, logsRes, usersRes] = await Promise.all([
       pool.query(`
@@ -1645,8 +1758,7 @@ app.post('/api/health-check-ai', requireAuth, async (req, res) => {
       }
     }
 
-    const { rows: settingsRows } = await pool.query("SELECT key, value FROM settings");
-    const settings = Object.fromEntries(settingsRows.map(r => [r.key, r.value]));
+    const settings = await loadSettingsMap();
 
     if (activeProvider === 'claude') {
       const apiKey = settings.claude_api_key;

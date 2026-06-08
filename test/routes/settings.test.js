@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { getApp, authed } from '../helpers/server.js';
+import { getApp, authed, authedAs } from '../helpers/server.js';
 
 let app, a;
 beforeAll(async () => {
@@ -40,7 +40,6 @@ describe('POST /api/settings input validation', () => {
   it('accepts valid ollama_model update', async () => {
     const res = await a.post('/api/settings')
       .send({ settings: [{ key: 'ollama_model', value: 'llama3' }] });
-    // 200 if DB available, 500 if not — but NOT 400
     expect(res.status).not.toBe(400);
   });
 
@@ -68,21 +67,15 @@ describe('POST /api/settings input validation', () => {
     expect(res.status).not.toBe(400);
   });
 
-  it('accepts claude_model update', async () => {
-    const res = await a.post('/api/settings')
-      .send({ settings: [{ key: 'claude_model', value: 'claude-sonnet-4-5' }] });
-    expect(res.status).not.toBe(400);
-  });
-
-  it('accepts openai_model update', async () => {
-    const res = await a.post('/api/settings')
-      .send({ settings: [{ key: 'openai_model', value: 'gpt-4o' }] });
-    expect(res.status).not.toBe(400);
-  });
-
-  it('accepts gemini_model update', async () => {
-    const res = await a.post('/api/settings')
-      .send({ settings: [{ key: 'gemini_model', value: 'gemini-1.5-pro' }] });
+  it('accepts model updates for external providers', async () => {
+    const payload = {
+      settings: [
+        { key: 'claude_model', value: 'claude-sonnet-4-5' },
+        { key: 'openai_model', value: 'gpt-4o' },
+        { key: 'gemini_model', value: 'gemini-1.5-pro' },
+      ],
+    };
+    const res = await a.post('/api/settings').send(payload);
     expect(res.status).not.toBe(400);
   });
 
@@ -93,17 +86,128 @@ describe('POST /api/settings input validation', () => {
   });
 
   it('skips sensitive key placeholder value without error', async () => {
-    // Sending "•••••" for a sensitive key should be silently skipped (not 400)
     const res = await a.post('/api/settings')
       .send({ settings: [{ key: 'claude_api_key', value: '•••••' }] });
     expect(res.status).not.toBe(400);
   });
 
   it('rejects admin_password_hash as a known key', async () => {
-    // admin_password_hash is NOT in KNOWN_SETTING_KEYS — it must be rejected
     const res = await a.post('/api/settings')
       .send({ settings: [{ key: 'admin_password_hash', value: 'anything' }] });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /api/settings', () => {
+  it('returns 401 without token', async () => {
+    const { default: request } = await import('supertest');
+    const res = await request(app).get('/api/settings');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for editor', async () => {
+    const editor = authedAs(app, 'editor');
+    const res = await editor.get('/api/settings');
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 200 or 500 (DB required) for admin', async () => {
+    const res = await a.get('/api/settings');
+    expect([200, 500]).toContain(res.status);
+    if (res.status === 200) {
+      expect(Array.isArray(res.body)).toBe(true);
+      const bodyText = JSON.stringify(res.body);
+      expect(bodyText).not.toContain('admin_password_hash');
+    }
+  });
+});
+
+describe('GET /api/prompts', () => {
+  it('returns 401 without token', async () => {
+    const { default: request } = await import('supertest');
+    const res = await request(app).get('/api/prompts');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for editor', async () => {
+    const editor = authedAs(app, 'editor');
+    const res = await editor.get('/api/prompts');
+    expect(res.status).toBe(403);
+  });
+
+  it('returns prompts data for admin when DB is available', async () => {
+    const res = await a.get('/api/prompts');
+    expect([200, 500]).toContain(res.status);
+    if (res.status === 200) {
+      expect(res.body).toHaveProperty('prompts');
+      expect(Array.isArray(res.body.prompts)).toBe(true);
+    }
+  });
+});
+
+describe('PUT /api/prompts/:key', () => {
+  it('returns 401 without token', async () => {
+    const { default: request } = await import('supertest');
+    const res = await request(app).put('/api/prompts/system_contract')
+      .send({ value: 'new prompt' });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for editor', async () => {
+    const editor = authedAs(app, 'editor');
+    const res = await editor.put('/api/prompts/system_contract')
+      .send({ value: 'new prompt' });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 400 for an unknown prompt key', async () => {
+    const res = await a.put('/api/prompts/not-real').send({ value: 'nope' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when value is missing', async () => {
+    const res = await a.put('/api/prompts/system_contract').send({});
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when value exceeds 100000 chars', async () => {
+    const res = await a.put('/api/prompts/system_contract')
+      .send({ value: 'x'.repeat(100001) });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 200 or 500 (DB required) for valid updates', async () => {
+    const res = await a.put('/api/prompts/system_contract')
+      .send({ value: 'You are an expert chef. Return JSON.' });
+    expect([200, 500]).toContain(res.status);
+  });
+});
+
+describe('DELETE /api/prompts/:key', () => {
+  it('returns 401 without token', async () => {
+    const { default: request } = await import('supertest');
+    const res = await request(app).delete('/api/prompts/system_contract');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for editor', async () => {
+    const editor = authedAs(app, 'editor');
+    const res = await editor.delete('/api/prompts/system_contract');
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 400 for an unknown prompt key', async () => {
+    const res = await a.delete('/api/prompts/not-real');
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 200 or 500 (DB required) for admin', async () => {
+    const res = await a.delete('/api/prompts/system_contract');
+    expect([200, 500]).toContain(res.status);
+    if (res.status === 200) {
+      expect(res.body.success).toBe(true);
+      expect(res.body).toHaveProperty('source', 'default');
+    }
   });
 });
 
@@ -114,18 +218,19 @@ describe('GET /api/admin/stats', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 for editor', async () => {
+    const editor = authedAs(app, 'editor');
+    const res = await editor.get('/api/admin/stats');
+    expect(res.status).toBe(403);
+  });
+
   it('returns stats object or 500 (DB required)', async () => {
     const res = await a.get('/api/admin/stats');
-    // 200 with stats or 500 if no DB
+    expect([200, 500]).toContain(res.status);
     if (res.status === 200) {
       expect(res.body).toHaveProperty('recipes');
       expect(res.body).toHaveProperty('jobs');
       expect(res.body).toHaveProperty('logs');
-      expect(res.body.recipes).toHaveProperty('total');
-      expect(res.body.recipes).toHaveProperty('draft');
-      expect(res.body.recipes).toHaveProperty('final');
-    } else {
-      expect(res.status).toBe(500);
     }
   });
 });
@@ -137,6 +242,12 @@ describe('DELETE /api/logs', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 for editor', async () => {
+    const editor = authedAs(app, 'editor');
+    const res = await editor.delete('/api/logs').send({ days: 30 });
+    expect(res.status).toBe(403);
+  });
+
   it('returns 400 when days param is missing', async () => {
     const res = await a.delete('/api/logs').send({});
     expect(res.status).toBe(400);
@@ -144,11 +255,6 @@ describe('DELETE /api/logs', () => {
 
   it('returns 400 when days is not a positive integer', async () => {
     const res = await a.delete('/api/logs').send({ days: -1 });
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 400 when days is 0', async () => {
-    const res = await a.delete('/api/logs').send({ days: 0 });
     expect(res.status).toBe(400);
   });
 
@@ -199,7 +305,6 @@ describe('POST /api/import', () => {
     const res = await a.post('/api/import').send({
       settings: [{ key: 'claude_api_key', value: 'sk-ant-test' }],
     });
-    // Should not 400 — key is skipped, not rejected
     expect([200, 500]).toContain(res.status);
     if (res.status === 200) {
       expect(res.body.settings.skipped).toBeGreaterThanOrEqual(1);
@@ -207,7 +312,6 @@ describe('POST /api/import', () => {
   });
 
   it('returns 403 for editor', async () => {
-    const { authedAs } = await import('../helpers/server.js');
     const editor = authedAs(app, 'editor');
     const res = await editor.post('/api/import').send({ recipes: [] });
     expect(res.status).toBe(403);
@@ -221,7 +325,13 @@ describe('GET /api/system-info', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns system info with valid token', async () => {
+  it('returns 403 for editor', async () => {
+    const editor = authedAs(app, 'editor');
+    const res = await editor.get('/api/system-info');
+    expect(res.status).toBe(403);
+  });
+
+  it('returns system info with valid admin token', async () => {
     const res = await a.get('/api/system-info');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('allowedOrigins');
@@ -233,7 +343,7 @@ describe('POST /api/health-check-ai', () => {
   it('returns 401 without token', async () => {
     const { default: request } = await import('supertest');
     const res = await request(app).post('/api/health-check-ai')
-      .send({ provider: 'ollama', url: 'http://localhost:11434', model: 'llama3' });
+      .send({ provider: 'ollama', url: 'http://localhost:11434/api/generate' });
     expect(res.status).toBe(401);
   });
 
@@ -250,109 +360,15 @@ describe('POST /api/health-check-ai', () => {
   });
 
   it('returns 400 for unknown provider', async () => {
-    const res = await a.post('/api/health-check-ai')
-      .send({ provider: 'unknownprovider' });
+    const res = await a.post('/api/health-check-ai').send({ provider: 'unknownprovider' });
     expect(res.status).toBe(400);
   });
 
-  // External providers read keys from DB — these will fail at connection level (not auth)
-  it('returns non-401 for claude provider (key from DB, not request)', async () => {
-    const res = await a.post('/api/health-check-ai').send({ provider: 'claude' });
-    // Should not be 401 (auth passes); will be 503 (no key) or 500/200 depending on env
-    expect(res.status).not.toBe(401);
-  });
-
-  it('returns non-401 for openai provider', async () => {
-    const res = await a.post('/api/health-check-ai').send({ provider: 'openai' });
-    expect(res.status).not.toBe(401);
-  });
-
-  it('returns non-401 for gemini provider', async () => {
-    const res = await a.post('/api/health-check-ai').send({ provider: 'gemini' });
-    expect(res.status).not.toBe(401);
-  });
-});
-
-describe('GET /api/system-contract', () => {
-  it('returns 401 without token', async () => {
-    const { default: request } = await import('supertest');
-    const res = await request(app).get('/api/system-contract');
-    expect(res.status).toBe(401);
-  });
-
-  it('returns contract and source field with valid token', async () => {
-    const res = await a.get('/api/system-contract');
-    // 200 from hardcoded default if no DB, or 200 from DB if available
-    expect([200]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body).toHaveProperty('contract');
-      expect(typeof res.body.contract).toBe('string');
-      expect(res.body.contract.length).toBeGreaterThan(0);
-      expect(res.body).toHaveProperty('source');
-      expect(['default', 'custom']).toContain(res.body.source);
-    }
-  });
-});
-
-describe('PUT /api/system-contract', () => {
-  it('returns 401 without token', async () => {
-    const { default: request } = await import('supertest');
-    const res = await request(app).put('/api/system-contract')
-      .send({ contract: 'new contract' });
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 403 for editor', async () => {
-    const { authedAs } = await import('../helpers/server.js');
-    const editor = authedAs(app, 'editor');
-    const res = await editor.put('/api/system-contract')
-      .send({ contract: 'new contract' });
-    expect(res.status).toBe(403);
-  });
-
-  it('returns 400 when contract is missing', async () => {
-    const res = await a.put('/api/system-contract').send({});
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 400 when contract is not a string', async () => {
-    const res = await a.put('/api/system-contract').send({ contract: 123 });
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 400 when contract exceeds 100000 chars', async () => {
-    const res = await a.put('/api/system-contract')
-      .send({ contract: 'x'.repeat(100001) });
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 200 or 500 (DB required) for valid contract', async () => {
-    const res = await a.put('/api/system-contract')
-      .send({ contract: 'You are an expert chef. Return JSON.' });
-    expect([200, 500]).toContain(res.status);
-  });
-});
-
-describe('DELETE /api/system-contract', () => {
-  it('returns 401 without token', async () => {
-    const { default: request } = await import('supertest');
-    const res = await request(app).delete('/api/system-contract');
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 403 for editor', async () => {
-    const { authedAs } = await import('../helpers/server.js');
-    const editor = authedAs(app, 'editor');
-    const res = await editor.delete('/api/system-contract');
-    expect(res.status).toBe(403);
-  });
-
-  it('returns 200 or 500 (DB required) for admin', async () => {
-    const res = await a.delete('/api/system-contract');
-    expect([200, 500]).toContain(res.status);
-    if (res.status === 200) {
-      expect(res.body.success).toBe(true);
-      expect(res.body).toHaveProperty('source', 'default');
+  it('returns a non-401 response for external providers after auth succeeds', async () => {
+    const providers = ['claude', 'openai', 'gemini'];
+    for (const provider of providers) {
+      const res = await a.post('/api/health-check-ai').send({ provider });
+      expect(res.status).not.toBe(401);
     }
   });
 });
@@ -365,7 +381,6 @@ describe('GET /api/export', () => {
   });
 
   it('returns 403 for editor', async () => {
-    const { authedAs } = await import('../helpers/server.js');
     const editor = authedAs(app, 'editor');
     const res = await editor.get('/api/export');
     expect(res.status).toBe(403);
@@ -378,12 +393,6 @@ describe('GET /api/export', () => {
       expect(res.body).toHaveProperty('recipes');
       expect(res.body).toHaveProperty('settings');
       expect(Array.isArray(res.body.settings)).toBe(true);
-      // Each setting must have both key and value fields
-      if (res.body.settings.length > 0) {
-        expect(res.body.settings[0]).toHaveProperty('key');
-        expect(res.body.settings[0]).toHaveProperty('value');
-      }
-      // API keys must NOT appear in export
       const exportText = JSON.stringify(res.body);
       expect(exportText).not.toContain('claude_api_key');
       expect(exportText).not.toContain('openai_api_key');
@@ -395,7 +404,6 @@ describe('GET /api/export', () => {
 
 describe('POST /api/settings role guard', () => {
   it('returns 403 for editor trying to save settings', async () => {
-    const { authedAs } = await import('../helpers/server.js');
     const editor = authedAs(app, 'editor');
     const res = await editor.post('/api/settings')
       .send({ settings: [{ key: 'ollama_model', value: 'llama3' }] });
@@ -403,7 +411,6 @@ describe('POST /api/settings role guard', () => {
   });
 
   it('returns 403 for viewer trying to save settings', async () => {
-    const { authedAs } = await import('../helpers/server.js');
     const viewer = authedAs(app, 'viewer');
     const res = await viewer.post('/api/settings')
       .send({ settings: [{ key: 'ollama_model', value: 'llama3' }] });

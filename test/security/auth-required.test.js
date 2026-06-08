@@ -7,37 +7,34 @@ import { getApp } from '../helpers/server.js';
 // before any query runs.
 
 const PROTECTED = [
-  // Original endpoints
   ['GET',    '/api/recipes'],
   ['GET',    '/api/jobs'],
   ['GET',    '/api/worker-status'],
   ['GET',    '/api/logs'],
   ['GET',    '/api/settings'],
-  ['GET',    '/api/system-contract'],
+  ['GET',    '/api/prompts'],
   ['GET',    '/api/export'],
+  ['GET',    '/api/admin/stats'],
+  ['GET',    '/api/system-info'],
   ['POST',   '/api/jobs'],
   ['POST',   '/api/settings'],
+  ['POST',   '/api/import'],
   ['POST',   '/api/recipes/bulk'],
   ['POST',   '/api/recipes/1/finalize'],
   ['POST',   '/api/health-check-ai'],
-  ['PUT',    '/api/recipes/1'],
-  ['DELETE', '/api/recipes/1'],
-  // Endpoints added in settings overhaul
-  ['GET',    '/api/admin/stats'],
-  ['GET',    '/api/system-info'],
-  ['DELETE', '/api/logs'],
-  ['POST',   '/api/import'],
-  ['POST',   '/api/auth/change-password'],
-  // Round 2: user management + contract CRUD
-  ['GET',    '/api/users'],
   ['POST',   '/api/users'],
-  ['GET',    '/api/users/1'],
-  ['PUT',    '/api/users/1'],
-  ['DELETE', '/api/users/1'],
   ['POST',   '/api/users/1/reset-password'],
+  ['POST',   '/api/auth/change-password'],
+  ['PUT',    '/api/recipes/1'],
+  ['PUT',    '/api/users/1'],
+  ['PUT',    '/api/prompts/system_contract'],
+  ['DELETE', '/api/recipes/1'],
+  ['DELETE', '/api/logs'],
+  ['DELETE', '/api/users/1'],
+  ['DELETE', '/api/prompts/system_contract'],
+  ['GET',    '/api/users'],
+  ['GET',    '/api/users/1'],
   ['GET',    '/api/auth/me'],
-  ['PUT',    '/api/system-contract'],
-  ['DELETE', '/api/system-contract'],
 ];
 
 let app;
@@ -58,8 +55,8 @@ describe('Authentication required on all protected endpoints', () => {
   });
 });
 
-describe('Auth endpoints are accessible without token', () => {
-  it('POST /api/auth/login is reachable (returns 400 or 401, not 404)', async () => {
+describe('Auth endpoints are reachable without token', () => {
+  it('POST /api/auth/login returns a login-layer response, not 404', async () => {
     const res = await request(app).post('/api/auth/login')
       .set('Content-Type', 'application/json')
       .send({});
@@ -68,23 +65,18 @@ describe('Auth endpoints are accessible without token', () => {
 });
 
 describe('Sensitive endpoint security hardening', () => {
-  it('POST /api/health-check-ai does not accept API keys in request body', async () => {
-    // This test verifies the endpoint requires auth — the body with API keys
-    // never reaches the handler (auth check fires first).
+  it('POST /api/health-check-ai does not echo request secrets when auth blocks the request', async () => {
     const res = await request(app).post('/api/health-check-ai')
       .set('Content-Type', 'application/json')
       .send({ provider: 'claude', api_key: 'sk-ant-sensitive-key' });
-    // Must be 401 — body is irrelevant, auth blocks it
     expect(res.status).toBe(401);
-    // Response must not echo back the key
     expect(JSON.stringify(res.body)).not.toContain('sk-ant-sensitive-key');
   });
 
-  it('DELETE /api/logs requires explicit days param (tested in settings.test.js)', async () => {
+  it('DELETE /api/logs still requires authentication when a body is present', async () => {
     const res = await request(app).delete('/api/logs')
       .set('Content-Type', 'application/json')
       .send({ days: 30 });
-    // No token — must be 401
     expect(res.status).toBe(401);
   });
 });

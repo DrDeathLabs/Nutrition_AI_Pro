@@ -5,6 +5,8 @@ import bcrypt from 'bcryptjs';
 const JWT_SECRET = process.env.JWT_SECRET;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const JWT_EXPIRY = '24h';
+const INITIAL_ADMIN_USERNAME = process.env.INITIAL_ADMIN_USERNAME || 'admin';
+const ALLOW_ENV_FALLBACK_IN_TESTS = process.env.NODE_ENV === 'test' && process.env.TEST_WITH_DB !== 'true';
 
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
   console.error('FATAL: JWT_SECRET env var is missing or too short (min 32 chars)');
@@ -29,6 +31,17 @@ function verifyEnvPassword(password) {
   return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
 }
 
+async function usersExist(pool) {
+  if (!pool) return false;
+  try {
+    const result = await pool.query('SELECT COUNT(*) AS count FROM users');
+    return parseInt(result.rows[0]?.count || '0', 10) > 0;
+  } catch (err) {
+    if (ALLOW_ENV_FALLBACK_IN_TESTS) return false;
+    throw err;
+  }
+}
+
 // ─── Auth Router ──────────────────────────────────────────────────────────────
 
 export function createAuthRouter(express, loginLimiter, pool) {
@@ -36,29 +49,45 @@ export function createAuthRouter(express, loginLimiter, pool) {
 
   // POST /api/auth/login
   // Accepts { username, password } — looks up users table.
-  // Backward-compat: if username omitted, falls back to env-var check (admin only).
+  // Bootstrap-only fallback: env-var auth is allowed only before the users table
+  // contains any accounts, or in no-DB unit tests.
   router.post('/login', loginLimiter, async (req, res) => {
     const { username, password } = req.body;
+    const safeUsername = typeof username === 'string' ? username.trim() : '';
 
     if (!password || typeof password !== 'string') {
       return res.status(400).json({ error: 'Password is required' });
     }
 
     let user = null;
+    let hasDbUsers = false;
 
-    if (pool && username && typeof username === 'string' && username.trim().length > 0) {
-      // Look up user by username in users table
+    try {
+      hasDbUsers = await usersExist(pool);
+    } catch (err) {
+      console.error('Login bootstrap check failed:', err.message);
+      return res.status(503).json({ error: 'Authentication service unavailable' });
+    }
+
+    if (hasDbUsers && !safeUsername) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    if (pool && safeUsername) {
+      // Look up user by username in users table.
       try {
         const result = await pool.query(
           'SELECT id, username, email, password_hash, role, is_active FROM users WHERE username = $1',
-          [username.trim()]
+          [safeUsername]
         );
         if (result.rows.length > 0) {
           user = result.rows[0];
         }
       } catch (err) {
         console.error('Login DB query failed:', err.message);
-        // Fall through to env-var check
+        if (!ALLOW_ENV_FALLBACK_IN_TESTS) {
+          return res.status(503).json({ error: 'Authentication service unavailable' });
+        }
       }
     }
 
@@ -70,7 +99,7 @@ export function createAuthRouter(express, loginLimiter, pool) {
         if (pool) {
           pool.query(
             "INSERT INTO terminal_logs (message, type) VALUES ($1, $2)",
-            [`Login rejected (inactive account): ${username} from ${req.ip || 'unknown'}`, 'auth_fail']
+            [`Login rejected (inactive account): ${safeUsername} from ${req.ip || 'unknown'}`, 'auth_fail']
           ).catch(() => {});
         }
         return res.status(401).json({ error: 'Account is disabled' });
@@ -81,11 +110,13 @@ export function createAuthRouter(express, loginLimiter, pool) {
         // Update last_login
         pool?.query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]).catch(() => {});
       }
-    } else {
-      // Backward-compat: no username provided or users table empty → env-var admin check
-      authenticated = verifyEnvPassword(password);
+    } else if (!hasDbUsers || ALLOW_ENV_FALLBACK_IN_TESTS) {
+      // Bootstrap path: before the DB contains any users, allow the initial admin
+      // credentials from env vars to obtain an admin token.
+      const canUseBootstrapAccount = !safeUsername || safeUsername === INITIAL_ADMIN_USERNAME;
+      authenticated = canUseBootstrapAccount && verifyEnvPassword(password);
       if (authenticated) {
-        tokenPayload = { user_id: 0, username: process.env.INITIAL_ADMIN_USERNAME || 'admin', role: 'admin' };
+        tokenPayload = { user_id: 0, username: INITIAL_ADMIN_USERNAME, role: 'admin' };
       }
     }
 
@@ -93,7 +124,7 @@ export function createAuthRouter(express, loginLimiter, pool) {
       if (pool) {
         pool.query(
           "INSERT INTO terminal_logs (message, type) VALUES ($1, $2)",
-          [`Login failed${username ? ` for "${username}"` : ''} from ${req.ip || 'unknown'}`, 'auth_fail']
+          [`Login failed${safeUsername ? ` for "${safeUsername}"` : ''} from ${req.ip || 'unknown'}`, 'auth_fail']
         ).catch(() => {});
       }
       return res.status(401).json({ error: 'Invalid username or password' });
@@ -164,35 +195,23 @@ export function createAuthRouter(express, loginLimiter, pool) {
     }
 
     try {
-      // Look up user's current hash
+      // Password changes require a DB-backed user account.
       const result = await pool.query(
         'SELECT id, password_hash FROM users WHERE id = $1',
         [req.user.user_id]
       );
 
-      let currentValid = false;
-      if (result.rows.length > 0) {
-        currentValid = await bcrypt.compare(currentPassword, result.rows[0].password_hash);
-      } else {
-        // env-var admin fallback
-        currentValid = verifyEnvPassword(currentPassword);
+      if (result.rows.length === 0) {
+        return res.status(409).json({ error: 'Password changes require a database-backed user account' });
       }
 
+      const currentValid = await bcrypt.compare(currentPassword, result.rows[0].password_hash);
       if (!currentValid) {
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
 
       const hash = await bcrypt.hash(newPassword, 12);
-
-      if (result.rows.length > 0) {
-        await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.user_id]);
-      } else {
-        // env-var admin: upsert into settings as fallback (legacy path)
-        await pool.query(
-          "INSERT INTO settings (key, value) VALUES ('admin_password_hash', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-          [hash]
-        );
-      }
+      await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.user_id]);
 
       pool.query(
         "INSERT INTO terminal_logs (message, type) VALUES ($1, $2)",

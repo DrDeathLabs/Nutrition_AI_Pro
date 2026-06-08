@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'o9ekn1WNEaSowxKCsVaBtEvl';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'e2e-test-password';
 
 test.describe('Generator view', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => sessionStorage.clear());
     await page.reload();
+    await page.fill('#login-username', 'admin');
     await page.fill('#login-password', ADMIN_PASSWORD);
     await page.click('#login-form button[type="submit"]');
     await expect(page.locator('#login-screen')).toBeHidden();

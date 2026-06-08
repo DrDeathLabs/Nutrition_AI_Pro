@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'o9ekn1WNEaSowxKCsVaBtEvl';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'e2e-test-password';
 
 test.describe('Authentication', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,6 +16,7 @@ test.describe('Authentication', () => {
   });
 
   test('shows error for wrong password', async ({ page }) => {
+    await page.fill('#login-username', 'admin');
     await page.fill('#login-password', 'wrongpassword');
     await page.click('#login-form button[type="submit"]');
     await expect(page.locator('#login-error')).toBeVisible();
@@ -23,6 +24,7 @@ test.describe('Authentication', () => {
   });
 
   test('logs in with correct password and shows app', async ({ page }) => {
+    await page.fill('#login-username', 'admin');
     await page.fill('#login-password', ADMIN_PASSWORD);
     await page.click('#login-form button[type="submit"]');
     await expect(page.locator('#login-screen')).toBeHidden();
@@ -31,6 +33,7 @@ test.describe('Authentication', () => {
 
   test('logout button clears session and shows login screen', async ({ page }) => {
     // Log in first
+    await page.fill('#login-username', 'admin');
     await page.fill('#login-password', ADMIN_PASSWORD);
     await page.click('#login-form button[type="submit"]');
     await expect(page.locator('#login-screen')).toBeHidden();

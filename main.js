@@ -65,7 +65,7 @@ async function apiCall(endpoint, method = 'GET', body = null) {
 
 document.addEventListener('DOMContentLoaded', () => {
   // --- CORE SELECTORS ---
-  const navBtns = document.querySelectorAll('.nav-btn');
+  const navBtns = document.querySelectorAll('.nav-btn[data-target]');
   const views = document.querySelectorAll('.view');
   const masterWorkspace = document.getElementById('master-workspace');
   const closeWorkspaceBtn = document.getElementById('close-workspace-btn');
@@ -1744,6 +1744,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- LOAD SETTINGS FROM SERVER ---
   async function loadSettings() {
+    if (getUserRole() !== 'admin') return;
     try {
       const rows = await apiCall('/settings');
       const map = Object.fromEntries(rows.map(s => [s.key, s.value]));
@@ -1950,11 +1951,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- INITIALIZATION ---
   async function initApp() {
     try {
+      applyRoleBasedUI();
       await loadSettings();
       await refreshDrafts();
       await refreshLibrary();
-      // Apply role-based UI visibility
-      applyRoleBasedUI();
+      loadSessionInfo();
     } catch (e) { console.error('Initial Load Failed', e); }
   }
 
@@ -1966,6 +1967,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hide job creation for viewers
     const formContainer = document.getElementById('form-container');
     if (formContainer) formContainer.style.display = isEditor ? '' : 'none';
+
+    // Only the account tab remains visible to non-admin users.
+    const adminOnlySettingsTabs = ['settings-ai', 'settings-generation', 'settings-security', 'settings-logs', 'settings-data', 'settings-prompts'];
+    adminOnlySettingsTabs.forEach((tabId) => {
+      const btn = document.querySelector(`.settings-tab-btn[data-settings-tab="${tabId}"]`);
+      const section = document.getElementById(tabId);
+      if (btn) btn.style.display = isAdmin ? '' : 'none';
+      if (section && !isAdmin) section.classList.remove('active');
+    });
+    const accountBtn = document.querySelector('.settings-tab-btn[data-settings-tab="settings-account"]');
+    const accountSection = document.getElementById('settings-account');
+    if (!isAdmin) {
+      settingsTabBtns.forEach(btn => btn.classList.toggle('active', btn === accountBtn));
+      settingsSections.forEach(section => section.classList.toggle('active', section === accountSection));
+    }
 
     // Settings save buttons hidden for non-admins
     const saveAiBtnEl = document.getElementById('save-ai-btn');
