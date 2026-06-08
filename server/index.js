@@ -994,7 +994,9 @@ app.post('/api/jobs', requireAuth, requireRole('admin', 'editor'), jobsLimiter, 
       return res.status(400).json({ error: 'goal must be 1000 characters or fewer' });
     }
 
-    const amount_ = parseInt(amount, 10);
+    const amount_ = typeof amount === 'string' && amount.trim() !== ''
+      ? Number(amount)
+      : amount;
     if (!Number.isInteger(amount_) || amount_ < 1 || amount_ > 100) {
       return res.status(400).json({ error: 'amount must be an integer between 1 and 100' });
     }

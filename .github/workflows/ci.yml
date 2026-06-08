@@ -72,7 +72,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Gitleaks
-        run: docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:8.24.3 detect --source=/repo --config=/repo/.gitleaks.toml --no-banner
+        run: docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:v8.24.3 detect --source=/repo --config=/repo/.gitleaks.toml --no-banner
 
   docker-smoke:
     runs-on: ubuntu-latest

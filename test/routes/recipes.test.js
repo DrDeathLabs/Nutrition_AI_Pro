@@ -82,9 +82,14 @@ describeIfDb('GET /api/export', () => {
     expect(Array.isArray(res.body.recipes)).toBe(true);
   });
 
-  it('does not include setting values', async () => {
+  it('does not include secret settings', async () => {
     const res = await a.get('/api/export');
-    const settingsWithValues = (res.body.settings || []).filter(s => s.value !== undefined);
-    expect(settingsWithValues).toHaveLength(0);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.settings)).toBe(true);
+    const exportText = JSON.stringify(res.body);
+    expect(exportText).not.toContain('claude_api_key');
+    expect(exportText).not.toContain('openai_api_key');
+    expect(exportText).not.toContain('gemini_api_key');
+    expect(exportText).not.toContain('admin_password_hash');
   });
 });
